@@ -18,7 +18,7 @@ import sys #To exit the program
 if(platform.system() == 'Windows'):
     import msvcrt
 elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
-    import tty
+    import termios
 else:
     sys.exit('This software only works on Windows or Unix operating systems')
 
@@ -27,12 +27,22 @@ class Helpers():
     def anyKey():
         print('Press any key to continue...')
         if(platform.system() == 'Windows'):
-            msvcrt.getch()
+            msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
-            tty.setraw(1)
-            sys.stdin.read(1)
+            fd = sys.stdin.fileno()
+            oldterm = termios.tcgetattr(fd)
+            newattr = termios.tcgetattr(fd)
+            newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSANOW, newattr)
+            try:
+                result = sys.stdin.read(1)
+            except IOError:
+                pass
+            finally:
+                termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
         else:
             sys.exit('This software only works on Windows or Unix operating systems')
+        print('\r\n')
 
 # Define custom exceptions
 class Error(Exception):
@@ -365,14 +375,13 @@ class Game():
                 return
 
 if __name__ == '__main__':
-    Helpers.anyKey()
     #Establish what platform we are on to get correct file location
     if(platform.system() == 'Windows'):
         saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
     elif(platform.system() == 'Darwin'):
-        saveLocation = '~/Library/battleships'
+        saveLocation = os.path.expanduser('~/Library/battleships')
     elif(platform.system() == 'Linux'):
-        saveLocation = '~/.battleships'
+        saveLocation = os.path.expanduser('~/.battleships')
     else:
         saveLocation = './'
     #Check if directory exists and if not create it
