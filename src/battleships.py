@@ -4,7 +4,9 @@ You may use, distribute and modify this code under the
 terms of the MIT license which can be found in the 
 project root.
 You should have received a copy of the MIT license with
-this file. If not, please visit : 
+this file. If not, please write to :
+mnickson@sidingsmedia.com
+or visit: 
 https://raw.githubusercontent.com/Computroniks/python-battleships/main/LICENSE
 """
 
