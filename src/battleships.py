@@ -42,7 +42,13 @@ class Helpers():
                 termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
         else:
             sys.exit('This software only works on Windows or Unix operating systems')
-        print('\r\n')
+    def clearScreen():
+        if(platform.system() == 'Windows'):
+            os.system('cls')
+        elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
+            os.system('clear')
+        else:
+            print('\n'*100)
 
 # Define custom exceptions
 class Error(Exception):
@@ -298,8 +304,8 @@ class Game():
             6: self.showHelp,
             7: self.quit
         }
-        print('Welcome to Battle Ships\nPlease choose an option:')
         while True:
+            print('Welcome to Battle Ships\nPlease choose an option:')
             self.choice:int = 0
             print('[1] Start A New Game\n[2] Load a saved game\n[3] View saved games\n[4] View Scores\n[5] Settings\n[6] Help and troubleshooting\n[7] Quit')
             while self.choice not in range(1,8):
@@ -307,6 +313,7 @@ class Game():
                     self.choice = int(input('Please choose an option [1-7]: '))
                 except ValueError:
                     pass
+            Helpers.clearScreen()
             self.choiceMap[self.choice]()
         
         
@@ -356,6 +363,8 @@ class Game():
         print('Saved Games:')
         for i in range(len(self.saves)):
             print(f'[{i+1}] {self.saves[i]}')
+        Helpers.anyKey()
+        Helpers.clearScreen()
         return
 
     def settings(self) -> None: #TODO: Add ability to adjust settings
@@ -372,9 +381,11 @@ class Game():
                 print('Bye')
                 sys.exit()
             else:
+                Helpers.clearScreen()
                 return
 
 if __name__ == '__main__':
+    Helpers.clearScreen()
     #Establish what platform we are on to get correct file location
     if(platform.system() == 'Windows'):
         saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
