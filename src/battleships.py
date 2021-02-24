@@ -14,6 +14,25 @@ import os #For file handling
 import pickle #For saving game maps to disk
 import hmac, hashlib #To sign pickle files to prevent remote code execution
 import sys #To exit the program
+#Import platform specific module for 'press any key' prompt
+if(platform.system() == 'Windows'):
+    import msvcrt
+elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
+    import tty
+else:
+    sys.exit('This software only works on Windows or Unix operating systems')
+
+#Class to organise related helper modules
+class Helpers():
+    def anyKey():
+        print('Press any key to continue...')
+        if(platform.system() == 'Windows'):
+            msvcrt.getch()
+        elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
+            tty.setraw(1)
+            sys.stdin.read(1)
+        else:
+            sys.exit('This software only works on Windows or Unix operating systems')
 
 # Define custom exceptions
 class Error(Exception):
@@ -179,7 +198,7 @@ class GameSave():
     """
     def __init__(self) -> None: #TODO: Add gamesave features
         self.saveKey:bytes = bytes('6P5OajyXaEURcLI0URJb', 'ascii') #Key for testing HMAC. Should be stored more securely
-    def listSave(self) -> list:
+    def listSave(self, saveLocation) -> list:
         """Get a list of all saved games
 
         Returns
@@ -187,10 +206,11 @@ class GameSave():
         list
             a list of all saved games
         """
-        pass
-    def outSave(self) -> None:
-        """Print a list of saved games"""
-        print('Saved games')
+        self.savedGames:list = []
+        for file in os.listdir(os.path.join(saveLocation, 'saved_games')):
+            if file.endswith(".pkl"):
+                self.savedGames.append(file)
+        return self.savedGames
     def saveGame(self, board:list, saveLocation) -> None:
         self.name = input('Please enter a name for this game: ')
         self.pickledData = pickle.dumps(board)
@@ -262,7 +282,7 @@ class Game():
         self.choiceMap = {
             1: self.startNew,
             2: self.loadGame,
-            3: self.savedGames.outSave,
+            3: self.showSave,
             4: self.scoreKeep.showScores,
             5: self.settings,
             6: self.showHelp,
@@ -321,6 +341,13 @@ class Game():
         else:
             self.gameboard.map = self.gameMap
             print('Loaded game files')#TODO: call play game or return to main menu
+    def showSave(self) -> None:
+        self.saves:list = self.savedGames.listSave(self.saveLocation)
+        print('Saved Games:')
+        for i in range(len(self.saves)):
+            print(f'[{i+1}] {self.saves[i]}')
+        return
+
     def settings(self) -> None: #TODO: Add ability to adjust settings
         """Show the settings dialog"""
         pass
@@ -338,6 +365,7 @@ class Game():
                 return
 
 if __name__ == '__main__':
+    Helpers.anyKey()
     #Establish what platform we are on to get correct file location
     if(platform.system() == 'Windows'):
         saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
