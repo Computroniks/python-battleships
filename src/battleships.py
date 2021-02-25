@@ -590,6 +590,13 @@ class Game():
                 return
 
 if __name__ == '__main__':
+    if('idlelib.run' in sys.modules):
+        print('Warning. This code should not be run in IDLE. Some features will not work\nas intended. Please run this code in the terminal or \ncommand line.')
+        choice = input('Are you sure you want to continue? [y/N]: ').lower().replace(' ', '')
+        if (choice == 'y'):
+            break
+        else:
+            sys.exit()
     Helpers.clearScreen()
     #Establish what platform we are on to get correct file location
     if(platform.system() == 'Windows'):
