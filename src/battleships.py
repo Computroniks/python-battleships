@@ -290,7 +290,7 @@ class Settings():
         #Check if directory exists and if not create it
         if(os.path.exists(self.saveLocation) == False):
             try:
-                os.mkdir(saveLocation)
+                os.mkdir(self.saveLocation)
             except OSError:
                 sys.exit(f"Creation of directory {self.saveLocation} failed.\n Please create this directory manually and try again.")
         #Check if directory exists and if not create it
