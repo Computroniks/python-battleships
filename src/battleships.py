@@ -16,6 +16,8 @@ import os #For file handling
 import pickle #For saving game maps to disk
 import hmac, hashlib #To sign pickle files to prevent remote code execution
 import sys #To exit the program
+import shutil #To get terminal size
+import threading, itertools, time #For the spinner
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -83,6 +85,114 @@ class Helpers():
             os.system('clear')
         else:
             print('\n'*100)
+        return
+
+class Spinner:
+    """This class handles the spinning icon
+
+    The little nice looking spinning icon at the end of the download message
+    is controlled by this class.
+
+    Methods
+    -------
+    writeNext(message, delay)
+        Writes the next spinner icon to the screen
+    removeSpinner(cleanup)
+        Removes the spinner
+    spinnerTask()
+        The main controler for the spinner
+    """
+
+    def __init__(self, message:str, delay:float=0.1) -> None:
+        """
+        Parameters
+        ----------
+        message : str
+            The message to be displayed before the spinner
+        delay : float
+            The delay in s between each step of the spinners cycle
+        
+        Returns
+        -------
+        None
+        """
+
+        self.spinner = itertools.cycle(['-', '/', '|', '\\'])
+        self.delay = delay
+        self.busy = False
+        self.spinnerVisible = False
+        sys.stdout.write(message)
+        return
+
+    def writeNext(self) -> None:
+        """Writes the next step of spinner
+        
+        Writes the next step of the spinners cycle to the screen
+
+        Returns
+        -------
+        None
+        """
+
+        with self._screen_lock:
+            if not self.spinnerVisible:
+                sys.stdout.write(next(self.spinner))
+                self.spinnerVisible = True
+                sys.stdout.flush()
+        return
+
+    def removeSpinner(self, cleanup:bool=False) -> None:
+        """Removes the spinner
+        
+        Removes the spinner from the screen
+
+        Parameters
+        ----------
+        cleanup : bool
+            Whether to cleanup the spinner
+        """
+
+        with self._screen_lock:
+            if self.spinnerVisible:
+                sys.stdout.write('\b')
+                self.spinnerVisible = False
+                if cleanup:
+                    sys.stdout.write(' ')       # overwrite spinner with blank
+                    sys.stdout.write('\r')      # move to next line
+                sys.stdout.flush()
+        return
+
+    def spinnerTask(self) -> None:
+        """Controls the spinner
+        
+        This method controls the function of the spinner and increments
+        it's position
+        
+        Returns
+        -------
+        None
+        """
+
+        while self.busy:
+            self.writeNext()
+            time.sleep(self.delay)
+            self.removeSpinner()
+        return
+
+    def __enter__(self) -> None:
+        if sys.stdout.isatty():
+            self._screen_lock = threading.Lock()
+            self.busy = True
+            self.thread = threading.Thread(target=self.spinnerTask)
+            self.thread.start()
+        return
+
+    def __exit__(self, exception, value, tb) -> None:
+        if sys.stdout.isatty():
+            self.busy = False
+            self.removeSpinner(cleanup=True)
+        else:
+            sys.stdout.write('\r')
         return
 
 # Define custom exceptions
