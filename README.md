@@ -29,6 +29,24 @@ This project is a basic one sided battleships game in which the user competes ag
 - Python standard packages
 - Working internet connection for help menu
 
+## Troubleshooting
+
+It is recommended that this software is run in the terminal or command line as apposed to being run in IDLE. This is due to a bug in IDLE that means that the press any key
+prompt is non blocking. Running the program in IDLE also means that the clear screen function will not work as intended. To run in terminal simply enter `python battleships.py`
+Note you may need to run `python3 battleships.py` on some operating systems, especially on Linux.
+
+If you recive an error stating:
+
+```
+Creation of directory `filename` failed
+Please create this directory manually and try again.
+```
+
+Then please check the file permissions for the path stated and try again. If this does not fix the issue then please create the files manually
+
+Please note that this software has only been tested on Windows and Debian 10 (specifically Kali Linux) so there is a risk of failure on macOS machines. If this occurs then
+please submit an issue.
+
 ## License
 
 This project is licenced under the terms of the MIT license which can be found in the project root. You should have received a copy of the MIT license with this file. If not please write to [mnickson@sidingsmedia.com](mailto:mnickson@sidingsmedia.com) or visit [https://raw.githubusercontent.com/Computroniks/python-battleships/main/LICENSE](https://raw.githubusercontent.com/Computroniks/python-battleships/main/LICENSE)
