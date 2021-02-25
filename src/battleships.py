@@ -18,6 +18,7 @@ import hmac, hashlib #To sign pickle files to prevent remote code execution
 import sys #To exit the program
 import shutil #To get terminal size
 import threading, itertools, time #For the spinner
+import urllib.request #To download the help files
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -38,17 +39,22 @@ class Helpers():
         This function runs the platform specific command to clear
         the terminal window
     """
-    def anyKey() -> None:
+    def anyKey(message:str = 'Press any key to continue...') -> None:
         """Waits for any key to be pressed
         
         Blocks the main thread until a key is pressed
+
+        Parameters
+        ----------
+        message : str, optional
+            The message that is displayed at the prompt.
 
         Returns
         -------
         None
         """
 
-        print('Press any key to continue...')
+        print(message)
         if(platform.system() == 'Windows'):
             msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
@@ -109,8 +115,8 @@ class Spinner:
         ----------
         message : str
             The message to be displayed before the spinner
-        delay : float
-            The delay in s between each step of the spinners cycle
+        delay : float, optional
+            The delay in s between each step of the spinners cycle (default = 0.1)
         
         Returns
         -------
@@ -676,8 +682,27 @@ class Game():
         -------
         None
         """
-
-        print('Help')
+        if(os.path.exists(os.path.join(self.saveLocation, 'help.txt')) == False):
+            with Spinner('Downloading help files'):
+                time.sleep(0.1)
+                urllib.request.urlretrieve('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/help.txt', os.path.join(self.saveLocation, 'help.txt'))
+                time.sleep(0.1)
+                print('\nDone')
+        print('Help and troubleshooting')
+        print('To continue to the next page press any key.')
+        Helpers.anyKey()
+        Helpers.clearScreen()
+        with open(os.path.join(self.saveLocation, 'help.txt')) as rfile:
+            self.helpContent = rfile.readlines()
+            rfile.close()
+        self.columns, self.rows = shutil.get_terminal_size()
+        self.oldRows = self.rows
+        for i in range(len(self.helpContent)):
+            print(self.helpContent[i])
+            if(i == self.rows-2):
+                self.rows += self.oldRows
+                Helpers.anyKey('--MORE--')
+        
         return
 
     def quit(self) -> None: 
