@@ -24,9 +24,28 @@ elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
 else:
     sys.exit('This software only works on Windows or Unix operating systems')
 
-#Class to organise related helper modules
 class Helpers():
-    def anyKey():
+    """Class to hold all related helper functions
+
+    Methods
+    -------
+    anykey()
+        This function blocks the main thread until any key
+        is pressed
+    clearScreen()
+        This function runs the platform specific command to clear
+        the terminal window
+    """
+    def anyKey() -> None:
+        """Waits for any key to be pressed
+        
+        Blocks the main thread until a key is pressed
+
+        Returns
+        -------
+        None
+        """
+
         print('Press any key to continue...')
         if(platform.system() == 'Windows'):
             msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
@@ -44,13 +63,27 @@ class Helpers():
                 termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
         else:
             sys.exit('This software only works on Windows or Unix operating systems')
-    def clearScreen():
+
+    def clearScreen() -> None:
+        """Clears the current console window
+        
+        Runs the correct system command to clear the current
+        console window. Note this will not work in IDLE as it
+        runs system commands.
+
+        Returns
+        -------
+        None
+        """
+
+        #BUG: This doesn't work in idle
         if(platform.system() == 'Windows'):
             os.system('cls')
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
             os.system('clear')
         else:
             print('\n'*100)
+        return
 
 # Define custom exceptions
 class Error(Exception):
@@ -65,15 +98,25 @@ class Error(Exception):
     """
 
     def __init__(self, message: str = "An unexpected error occured") -> None:
+        """
+        Calls parent class with specified message to print out 
+        error to screen
+
+        Returns
+        -------
+        None
+        """
+
         self.message = message
         super().__init__(self.message)
+        return None
 
 class PositionAlreadyPopulated(Error):
     """Raised when position is already populated
 
     This error is raised when a ship is trying to be placed in
     a position which is already populated by another ship.
-sss
+
     Attributes
     ----------
     message : str, optional
@@ -81,9 +124,18 @@ sss
     """
 
     def __init__(self, message: str = "This position is already populated") -> None:
+        """
+        Calls parent class with specified message to print out
+        error to screen
+
+        Returns
+        -------
+        None
+        """
+
         self.message: str = message
         super().__init__(self.message)
-
+        return
 
 class Board():
     """A class that handles anything to do with the game board
@@ -95,6 +147,8 @@ class Board():
 
     Methods
     -------
+    generateBoard(x, y)
+        Generates a board of size `x` `y`
     addShip(size, posX, posY)
         Adds a ship of size `size` starting at `posX` `posY`
     printBoard()
@@ -105,27 +159,35 @@ class Board():
 
     def __init__(self, x: int = 10, y: int = 10) -> None:
         """
-        Parameters
-        ----------
-        x : int, optional
-            The width of the game board (default is 10)
-        y : int, optional
-            The height of the game board (default is 10)
+        Returns
+        -------
+        None
         """
 
-        self.generateBoard(x, y)
+        self.map = None
+        return
 
     def generateBoard(self, x:int = 10, y:int = 10) -> None:
-        """
+        """Creates a board
+
+        Creates a board of size `x` `y` and set self.map to
+        the generated board
+
         Parameters
         ----------
         x : int, optional
             The width of the game board (default is 10)
         y : int, optional
             The height of the game board (default is 10)
+        
+        Returns
+        -------
+        None
         """
 
         self.map: list = [[0 for i in range(x)] for j in range(y)]
+        return
+
     def addShip(self, size: int, posX: int, posY: int, rotDir: bool = False) -> None:
         """Adds a ship of specified size to board starting at specified coordinates
 
@@ -145,15 +207,24 @@ class Board():
         ------
         PositionAlreadyPopulated
             If position for ship is already taken.
+        
+        Returns
+        -------
+        None
         """
 
-        pass
+        return
 
     def printBoard(self) -> None:
         """Prints the game board
+        
+        Outputs the game board with X and Y headers
 
-        This function prints out the gameboard with all items seen
+        Returns
+        -------
+        None
         """
+
         # Print x heading
         print(f"\n\n|{' ':^3}|", end='')
         for i in range(len(self.map[0])):
@@ -163,12 +234,17 @@ class Board():
             print(f'\n|{i+1:^3}|', end='')
             for j in range(len(self.map[i])):
                 print(f'{self.map[i][j]:^3}|', end='')
+        return
 
     def printBoardHidden(self) -> None:
         """Prints the game board
 
         This function prints out the gameboard but all items except for hits and 
         misses are redacted.
+        
+        Returns
+        -------
+        None
         """
 
         # Print x heading
@@ -183,6 +259,7 @@ class Board():
                     print(f'{self.map[i][j]:^3}|', end='')
                 else:
                     print(f"{'#':^3}|", end='')
+        return
      
 class Scoring():
     """This class handles the scoring and saving of scores
@@ -200,9 +277,20 @@ class Scoring():
 
     def __init__(self) -> None:
         self.score = 0
+        return
+
     def showScores(self) -> None:
-        """Prints a list of the top 10 scores"""
-        pass   
+        """Prints a list of the top 10 scores
+        
+        Reads the contents of scores.json and then sorts by highest
+        before printing it to screen.
+
+        Returns
+        -------
+        None
+        """
+
+        return   
         
 class GameSave():
     """This class handles the saving and loading of game files
@@ -214,8 +302,17 @@ class GameSave():
     outSave()
         print a list of all saved games
     """
+
     def __init__(self) -> None: #TODO: Add gamesave features
+        """      
+        Returns
+        -------
+        None
+        """
+
         self.saveKey:bytes = bytes('6P5OajyXaEURcLI0URJb', 'ascii') #Key for testing HMAC. Should be stored more securely
+        return
+
     def listSave(self, saveLocation) -> list:
         """Get a list of all saved games
 
@@ -224,12 +321,31 @@ class GameSave():
         list
             a list of all saved games
         """
+
         self.savedGames:list = []
         for file in os.listdir(os.path.join(saveLocation, 'saved_games')):
             if file.endswith(".pkl"):
                 self.savedGames.append(file)
         return self.savedGames
-    def saveGame(self, board:list, saveLocation) -> None:
+
+    def saveGame(self, board:list, saveLocation:str) -> None:
+        """Saves the current gameboard
+        
+        Pickles provided gameboard and then signs data using HMAC before 
+        saving to file
+
+        Parameters
+        ----------
+        board : list
+            The game map in list form
+        saveLocation:
+            The path to the battleships directory
+
+        Returns
+        -------
+        None
+        """
+
         self.name = input('Please enter a name for this game: ')
         self.pickledData = pickle.dumps(board)
         self.digest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
@@ -240,7 +356,23 @@ class GameSave():
             data.write(self.pickledData)
             data.close()
         return
+
     def loadGame(self, saveLocation) -> list:
+        """Loads a game file
+
+        Loads the relevant game files before verifying the pickled
+        data's signature to verify it hasn't been modified
+
+        Parameters
+        ----------
+        saveLocation : str
+            The path to the battleships directory
+
+        Returns
+        -------
+        None
+        """
+
         while True:
             self.fileName = input('Please enter the name of the game you wish to load or input \'view\' to view all saved games: ')
             if (self.fileName == 'view'):
@@ -263,11 +395,6 @@ class GameSave():
         else:
             print('Failed to load game files')
             return
-        
-
-
-
-
 
 class Game():
     """This class handles the gameplay and controls all aspects of the game
@@ -276,7 +403,9 @@ class Game():
     -------
     mainMenu()
         shows the main menu
-    startNew()
+    play()
+        The main game loop
+    createNew()
         Generates a new game
     loadGame()
         loads a game from file
@@ -298,29 +427,53 @@ class Game():
     def mainMenu(self) -> None:
         """Show the main menu"""
         self.choiceMap = {
-            1: self.startNew,
-            2: self.loadGame,
-            3: self.showSave,
-            4: self.scoreKeep.showScores,
-            5: self.settings,
-            6: self.showHelp,
-            7: self.quit
+            1: self.play,
+            2: self.createNew,
+            3: self.loadGame,
+            4: self.showSave,
+            5: self.scoreKeep.showScores,
+            6: self.settings,
+            7: self.showHelp,
+            8: self.quit
         }
         while True:
             print('Welcome to Battle Ships\nPlease choose an option:')
             self.choice:int = 0
-            print('[1] Start A New Game\n[2] Load a saved game\n[3] View saved games\n[4] View Scores\n[5] Settings\n[6] Help and troubleshooting\n[7] Quit')
-            while self.choice not in range(1,8):
+            print('[1] Play\n[2] Start A New Game\n[3] Load a saved game\n[4] View saved games\n[5] View Scores\n[6] Settings\n[7] Help and troubleshooting\n[8] Quit')
+            while self.choice not in range(1,9):
                 try:
-                    self.choice = int(input('Please choose an option [1-7]: '))
+                    self.choice = int(input('Please choose an option [1-8]: '))
                 except ValueError:
                     pass
             Helpers.clearScreen()
             self.choiceMap[self.choice]()
         
+    def play(self) -> None:
+        """The main game loop
         
-    def startNew(self) -> None:
-        """Create a new game"""
+        This is the main game loop for battleships. This is where
+        all of the main game logic is.
+
+        Returns
+        -------
+        None
+        """
+
+        #If no game loaded create new one
+        if(self.gameboard.map == None):
+            self.createNew()
+        return
+        
+    def createNew(self) -> None:
+        """Create a new game
+        
+        Creates a new game board acording to the users specifications
+
+        Returns
+        -------
+        None
+        """
+
         while True:
             try:
                 self.width: int = int(input('Please enter the board width: '))
@@ -349,34 +502,84 @@ class Game():
             except ValueError:
                 print('Please enter a valid number!')
         self.gameboard.generateBoard(self.width, self.height)
-        self.savedGames.saveGame(self.gameboard.map, self.saveLocation)
+        print('Game created')
+        Helpers.anyKey()
+        Helpers.clearScreen()
         return
+
     def loadGame(self) -> None:
-        """Load a game file from disk"""
+        """Load a game file from disk
+        
+        Loads specified game from disk.
+
+        Returns
+        -------
+        None
+        """
+
         self.gameMap = self.savedGames.loadGame(self.saveLocation)
         if (self.gameMap == None):
             print('Failed to load game files')
-            return
         else:
             self.gameboard.map = self.gameMap
-            print('Loaded game files')#TODO: call play game or return to main menu
+            print('Loaded game files')
+        Helpers.anyKey()
+        Helpers.clearScreen()
+        return
+    
     def showSave(self) -> None:
+        """Prints a list of saved games
+        
+        Prints a list of all games in `saveLocation/saved_games`
+
+        Returns
+        -------
+        None
+        """
+
         self.saves:list = self.savedGames.listSave(self.saveLocation)
         print('Saved Games:')
         for i in range(len(self.saves)):
-            print(f'[{i+1}] {self.saves[i]}')
+            print(f'[{i+1}] {self.saves[i]}')#FIXME: outputs file exension
         Helpers.anyKey()
         Helpers.clearScreen()
         return
 
     def settings(self) -> None: #TODO: Add ability to adjust settings
-        """Show the settings dialog"""
+        """Show the settings dialog
+        
+        Opens the settings dialog with with options to set `saveLocation`
+
+        Returns
+        -------
+        None
+        """
+
         pass
     def showHelp(self) -> None: #TODO: Add help text
-        """Output the help text"""
+        """Output the help text
+        
+        Downloads help file if not already downloaded and then displays it
+        page by page.
+
+        Returns
+        -------
+        None
+        """
+
         print('Help')
+        return
+
     def quit(self) -> None: 
-        """Confirm and exit the program"""
+        """Confirm and exit the program
+        
+        Asks user if they really want to quit. Default it no.
+
+        Returns
+        -------
+        None
+        """
+
         while True:
             self.quitC:str = input('Are you sure you want to quit? [y/N]').lower().replace(' ', '')
             if (self.quitC == 'y'):
