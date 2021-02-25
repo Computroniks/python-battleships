@@ -253,6 +253,69 @@ class PositionAlreadyPopulated(Error):
         super().__init__(self.message)
         return
 
+class Settings():
+    """This class handles all settings files
+    
+    Anything to do with settings is dealt by this class. This includes
+    saveLocation.
+
+    Attributes
+    ----------
+    self.saveLocation : str
+        This is the file path for the save location
+
+    Methods
+    -------
+    """
+
+    def __init__(self) -> None:
+        """
+        Establishes current system to generate correct file path before
+        checking that correct directories and files exist and creating
+        them if they don't
+
+        Returns
+        -------
+        None
+        """
+        #Establish what platform we are on to get correct file location
+        if(platform.system() == 'Windows'):
+            self.saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
+        elif(platform.system() == 'Darwin'):
+            self.saveLocation = os.path.expanduser('~/Library/battleships')
+        elif(platform.system() == 'Linux'):
+            self.saveLocation = os.path.expanduser('~/.battleships')
+        else:
+            self.saveLocation = './'
+        #Check if directory exists and if not create it
+        if(os.path.exists(self.saveLocation) == False):
+            try:
+                os.mkdir(saveLocation)
+            except OSError:
+                sys.exit(f"Creation of directory {self.saveLocation} failed.\n Please create this directory manually and try again.")
+        #Check if directory exists and if not create it
+        if(os.path.exists(os.path.join(self.saveLocation, 'saved_games')) == False):
+            try:
+                os.mkdir(os.path.join(self.saveLocation, 'saved_games'))
+            except OSError:
+                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'saved_games')} failed.\n Please create this directory manually and try again.")
+        #Check if file exists and if not create it
+        if(os.path.exists(os.path.join(self.saveLocation, 'score.json')) == False):
+            try:
+                f = open(os.path.join(self.saveLocation, 'score.json'), 'w')
+                f.write('{}')
+                f.close()
+            except OSError:
+                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'score.json')} failed.\n Please create this directory manually and try again.")
+        if(os.path.exists(os.path.join(self.saveLocation, 'settings.json')) == False):
+            try:
+                f = open(os.path.join(self.saveLocation, 'settings.json'), 'w')
+                f.write('{}')
+                f.close()
+            except OSError:
+                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'settings.json')} failed.\n Please create this directory manually and try again.")
+        return
+
 class Board():
     """A class that handles anything to do with the game board
 
@@ -534,8 +597,9 @@ class Game():
     
     """
 
-    def __init__(self, saveLocation:str) -> None:
-        self.saveLocation:str = saveLocation
+    def __init__(self) -> None:
+        self.settings = Settings()
+        self.saveLocation:str = self.settings.saveLocation
         self.scoreKeep = Scoring()
         self.savedGames = GameSave()
         self.gameboard = Board()
@@ -548,7 +612,7 @@ class Game():
             3: self.loadGame,
             4: self.showSave,
             5: self.scoreKeep.showScores,
-            6: self.settings,
+            6: self.settingsOptions,
             7: self.showHelp,
             8: self.quit
         }
@@ -661,7 +725,7 @@ class Game():
         Helpers.clearScreen()
         return
 
-    def settings(self) -> None: #TODO: Add ability to adjust settings
+    def settingsOptions(self) -> None: #TODO: Add ability to adjust settings
         """Show the settings dialog
         
         Opens the settings dialog with with options to set `saveLocation`
@@ -733,34 +797,4 @@ if __name__ == '__main__':
         else:
             sys.exit()
     Helpers.clearScreen()
-    #Establish what platform we are on to get correct file location
-    if(platform.system() == 'Windows'):
-        saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
-    elif(platform.system() == 'Darwin'):
-        saveLocation = os.path.expanduser('~/Library/battleships')
-    elif(platform.system() == 'Linux'):
-        saveLocation = os.path.expanduser('~/.battleships')
-    else:
-        saveLocation = './'
-    #Check if directory exists and if not create it
-    if(os.path.exists(saveLocation) == False):
-        try:
-            os.mkdir(saveLocation)
-        except OSError:
-            sys.exit(f"Creation of directory {saveLocation} failed.\n Please create this directory manually and try again.")
-    #Check if directory exists and if not create it
-    if(os.path.exists(os.path.join(saveLocation, 'saved_games')) == False):
-        try:
-            os.mkdir(os.path.join(saveLocation, 'saved_games'))
-        except OSError:
-            sys.exit(f"Creation of directory {os.path.join(saveLocation, 'saved_games')} failed.\n Please create this directory manually and try again.")
-    #Check if file exists and if not create it
-    if(os.path.exists(os.path.join(saveLocation, 'score.json')) == False):
-        try:
-            f = open(os.path.join(saveLocation, 'score.json'), 'w')
-            f.write('{}')
-            f.close()
-        except OSError:
-            sys.exit(f"Creation of directory {os.path.join(saveLocation, 'score.json')} failed.\n Please create this directory manually and try again.")
-    
-    app = Game(saveLocation)
+    app = Game()
