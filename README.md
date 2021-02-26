@@ -14,6 +14,11 @@ This project is a basic one sided battleships game in which the user competes ag
 
 \*Requires network connection for first use
 
+## Design constraints
+
+- There can be no external dependancies. Only standard python libraries can be used
+- All code must be within one file
+
 ## Supported systems
 
 | Name       | Supported | Tested |
