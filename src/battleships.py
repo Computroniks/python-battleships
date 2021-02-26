@@ -19,6 +19,7 @@ import sys #To exit the program
 import shutil #To get terminal size
 import threading, itertools, time #For the spinner
 import urllib.request #To download the help files
+import json #For reading score and settings files
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -278,6 +279,7 @@ class Settings():
         -------
         None
         """
+
         #Establish what platform we are on to get correct file location
         if(platform.system() == 'Windows'):
             self.saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
@@ -314,7 +316,35 @@ class Settings():
                 f.close()
             except OSError:
                 sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'settings.json')} failed.\n Please create this directory manually and try again.")
+        #Load settings.json
+        with open(os.path.join(self.saveLocation, 'settings.json'), 'r') as data:
+            self.settingsData = json.load(data)
         return
+
+        def changeSetting(self, setting:str, value) -> None:
+            """Changes the setting and writes change to disk
+
+            Takes the settings to change and value to change it to
+            and changes it in the dictionary before writing the 
+            changes to disk.
+
+            Parameters
+            ----------
+            setting : str
+                The setting that is to be changed
+            value
+                The value that the setting should be changed to
+
+            Returns
+            -------
+            None
+            """
+
+            self.settingsData[setting] = value
+            with open(os.path.join(self.saveLocation, 'settings.json'), 'w') as data:
+                json.dump(self.settingsData, data)
+            return
+
 
 class Board():
     """A class that handles anything to do with the game board
