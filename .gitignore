@@ -1,2 +1,9 @@
+#Editor settings
 .vscode
+
+#Python files
 venv
+__pycache__
+
+#Output files
+out.txt
