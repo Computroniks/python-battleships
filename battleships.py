@@ -8,6 +8,11 @@ this file. If not, please write to :
 mnickson@sidingsmedia.com
 or visit: 
 https://raw.githubusercontent.com/Computroniks/python-battleships/main/LICENSE
+
+Python Battleships
+------------------
+A one sided game of battleships that was written for a 
+school project.
 """
 
 #Import required modules
@@ -254,6 +259,32 @@ class PositionAlreadyPopulated(Error):
         super().__init__(self.message)
         return
 
+class OutOfBounds(Error):
+    """Raised when position out of bounds
+
+    This error is raised when a ship is trying to be placed in
+    a position which is not within the bounds of the game board
+
+    Attributes
+    ----------
+    message : str, optional
+        An explanation of the error
+    """
+
+    def __init__(self, message: str = "This position is out of bounds") -> None:
+        """
+        Calls parent class with specified message to print out
+        error to screen
+
+        Returns
+        -------
+        None
+        """
+
+        self.message: str = message
+        super().__init__(self.message)
+        return
+
 class Settings():
     """This class handles all settings files
     
@@ -366,7 +397,7 @@ class Board():
         Prints the gameboard but hides all except hits and misses
     """
 
-    def __init__(self, x: int = 10, y: int = 10) -> None:
+    def __init__(self) -> None:
         """
         Returns
         -------
@@ -416,6 +447,9 @@ class Board():
         ------
         PositionAlreadyPopulated
             If position for ship is already taken.
+        OutOfBounds
+            If the position for the ship is not within the confines of the 
+            game board.
         
         Returns
         -------
