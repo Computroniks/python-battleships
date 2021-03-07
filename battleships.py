@@ -706,6 +706,54 @@ class Game():
         #If no game loaded create new one
         if(self.gameboard.map == None):
             self.createNew()
+        #Get gameboard height and width
+        self.xy = [len(self.gameboard.map[0]), len(self.gameboard.map)]
+        print('To exit press CTRL + C at any time')
+        #Game loop
+        while True:
+            try:
+                self.gameboard.printBoardHidden()
+                print('')
+                #Get coordinates to engage
+                self.error = False
+                while True:
+                    self.coordinates:list = input('Please enter the X and Y coordinates you wish to engage seperated by a comma: ').replace(' ', '').split(',')
+                    if (not (len(self.coordinates) == 2)):
+                        print('Invalid coordinates')
+                        self.error = True
+                        break
+                    for (i in range(len(self.coordinates)+1)):
+                        try:
+                            self.coordinates[i] = int(self.coordinates[i])
+                        except ValueError:
+                            print('Invalid coordinates')
+                            self.error = True
+                            break
+                        if (not (self.coordinates[i] in range(self.xy[i]+1))):
+                            print('Invalid coordinates')
+                            self.error = True
+                            break
+                    if (self.error):
+                        continue
+                    else:
+                        break
+                print(self.coordinates)
+            except KeyboardInterrupt:
+                print('[1] Save and exit\n[2] Exit without saving\n[3] Return to game')
+                while True:
+                    try:
+                        self.choice = int(input('Please enter an option [1-3]: '))
+                        break
+                    except ValueError:
+                        pass
+                if (self.choice == 1):
+                    self.savedGames.saveGame(self.gameboard.map, self.settings.saveLocation)
+                    print('Game saved')
+                    Helpers.anyKey()
+                    return
+                elif (self.choice == 2):
+                    pass
+
         return
         
     def createNew(self) -> None:
