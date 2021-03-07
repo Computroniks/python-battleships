@@ -50,8 +50,8 @@ You will then be prompted to enter the coordinates of the grid square at which
 you wish to fire. You will then be informed if your shot hit or missed. After a
 short delay the screen will be cleared and an updated game board will be printed
 to the screen. The proccess then continues until all ships are sunk. You can
-exit the game at any time by entering q at the coordinates prompt or by pressing 
-Ctrl + C. You will then be prompted with an options menu as shown below:
+exit the game at any time  by pressing Ctrl + C. You will then be prompted with 
+an options menu as shown below:
 [1] Save and exit
 [2] Exit without saving
 [3] Return to game
