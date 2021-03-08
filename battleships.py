@@ -25,6 +25,7 @@ import shutil #To get terminal size
 import threading, itertools, time #For the spinner
 import urllib.request #To download the help files
 import json #For reading score and settings files
+import string #To verify filenames
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -98,7 +99,27 @@ class Helpers():
         else:
             print('\n'*100)
         return
+    def formatFileName(unsafeFileName:str) -> str:
+        """Take a string and return a valid filename constructed from the string.
 
+        Uses a whitelist approach: any characters not present in validC hars are
+        removed.  
+
+        Parameters
+        ----------
+        unsafeFileName : string
+            This is the user input to be sanitized and formated
+
+        Returns
+        -------
+        string
+            The sanitized and formated file name
+        """
+
+        validChars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+        safeFileName = ''.join(c for c in unsafeFileName if c in validChars)
+        safeFileName = safeFileName.replace(' ','_') # I don't like spaces in filenames.
+        return safeFileName
 class Spinner:
     """This class handles the spinning icon
 
@@ -310,7 +331,7 @@ class Settings():
         -------
         None
         """
-
+        
         #Establish what platform we are on to get correct file location
         if(platform.system() == 'Windows'):
             self.saveLocation = os.path.expandvars("%LOCALAPPDATA%/battleships")
@@ -320,33 +341,34 @@ class Settings():
             self.saveLocation = os.path.expanduser('~/.battleships')
         else:
             self.saveLocation = './'
-        #Check if directory exists and if not create it
+
+        self.dirs = [
+            'saved_games'
+        ]
+        self.files = [
+            'score.json',
+            'saved_games/saves.json'
+        ]
         if(os.path.exists(self.saveLocation) == False):
             try:
                 os.mkdir(self.saveLocation)
             except OSError:
                 sys.exit(f"Creation of directory {self.saveLocation} failed.\n Please create this directory manually and try again.")
-        #Check if directory exists and if not create it
-        if(os.path.exists(os.path.join(self.saveLocation, 'saved_games')) == False):
-            try:
-                os.mkdir(os.path.join(self.saveLocation, 'saved_games'))
-            except OSError:
-                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'saved_games')} failed.\n Please create this directory manually and try again.")
-        #Check if file exists and if not create it
-        if(os.path.exists(os.path.join(self.saveLocation, 'score.json')) == False):
-            try:
-                f = open(os.path.join(self.saveLocation, 'score.json'), 'w')
-                f.write('{}')
-                f.close()
-            except OSError:
-                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'score.json')} failed.\n Please create this directory manually and try again.")
-        if(os.path.exists(os.path.join(self.saveLocation, 'settings.json')) == False):
-            try:
-                f = open(os.path.join(self.saveLocation, 'settings.json'), 'w')
-                f.write('{}')
-                f.close()
-            except OSError:
-                sys.exit(f"Creation of directory {os.path.join(self.saveLocation, 'settings.json')} failed.\n Please create this directory manually and try again.")
+        #Check if directorys exists and if not create it
+        for i in self.dirs:
+            if (os.path.exists(os.path.join(self.saveLocation, i)) == False):
+                try:
+                    os.mkdir(os.path.join(self.saveLocation, i))
+                except OSError:
+                    sys.exit(f"Creation of directory {os.path.join(self.saveLocation, i)} failed.\n Please create this directory manually and try again.")
+        for i in self.files:
+            if (os.path.exists(os.path.join(self.saveLocation, i)) == False):
+                try:
+                    f = open(os.path.join(self.saveLocation, i), 'w')
+                    f.write('{}')
+                    f.close()
+                except OSError:
+                    sys.exit(f"Creation of directory {os.path.join(self.saveLocation, i)} failed.\n Please create this file manually and try again.")
         #Load settings.json
         with open(os.path.join(self.saveLocation, 'settings.json'), 'r') as data:
             self.settingsData = json.load(data)
@@ -546,18 +568,24 @@ class GameSave():
         print a list of all saved games
     """
 
-    def __init__(self) -> None: #TODO: Add gamesave features
+    def __init__(self, saveLocation:str) -> None: #TODO: Add gamesave features
         """      
         Returns
         -------
         None
         """
-
+        with open(os.path.join(saveLocation, 'saved_games/saves.json'), 'r') as data:
+            self.savesFile = json.load(data)
         self.saveKey:bytes = bytes('6P5OajyXaEURcLI0URJb', 'ascii') #Key for testing HMAC. Should be stored more securely
         return
 
-    def listSave(self, saveLocation) -> list:
+    def listSave(self, saveLocation:str) -> list:
         """Get a list of all saved games
+
+        Parameters
+        ----------
+        saveLocation : string
+            The path to the battleships directory
 
         Returns
         -------
@@ -566,12 +594,11 @@ class GameSave():
         """
 
         self.savedGames:list = []
-        for file in os.listdir(os.path.join(saveLocation, 'saved_games')):
-            if file.endswith(".pkl"):
-                self.savedGames.append(file)
+        for key in self.savesFile:
+            self.savedGames.append(key)
         return self.savedGames
 
-    def saveGame(self, board:list, saveLocation:str) -> None:
+    def saveGame(self, board:list, saveLocation:str, score:int) -> None:
         """Saves the current gameboard
         
         Pickles provided gameboard and then signs data using HMAC before 
@@ -581,7 +608,7 @@ class GameSave():
         ----------
         board : list
             The game map in list form
-        saveLocation:
+        saveLocation : string
             The path to the battleships directory
 
         Returns
@@ -592,12 +619,12 @@ class GameSave():
         self.name = input('Please enter a name for this game: ')
         self.pickledData = pickle.dumps(board)
         self.digest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
-        with open(os.path.join(saveLocation, 'saved_games', f'{self.name}.sha256'), 'w') as data:
-            data.write(self.digest)
-            data.close()
+        self.savesFile[self.name] = {'fileName': Helpers.formatFileName(self.name), 'score':score, 'hash':self.digest}
         with open(os.path.join(saveLocation, 'saved_games', f'{self.name}.pkl'), 'wb') as data:
             data.write(self.pickledData)
             data.close()
+        with open(os.path.join(saveLocation, 'saved_games/saves.json'), 'w') as data:
+            json.dump(self.savesFile, data)
         return
 
     def loadGame(self, saveLocation) -> list:
@@ -619,13 +646,14 @@ class GameSave():
         while True:
             self.fileName = input('Please enter the name of the game you wish to load or input \'view\' to view all saved games: ')
             if (self.fileName == 'view'):
-                self.outSave()
+                self.saves:list = self.listSave(saveLocation)
+                print('Saved Games:')
+                for i in range(len(self.saves)):
+                    print(f'[{i+1}] {self.saves[i]}')
             else:
                 break
-        if(os.path.exists(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.pkl')) and os.path.exists(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.sha256'))):
-            with open(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.sha256'), 'r') as data:
-                self.recvdDigest = data.read()
-                data.close()
+        if (self.fileName in self.savesFile):
+            self.recvdDigest = self.savesFile[self.fileName]['hash']
             with open(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.pkl'), 'rb') as data:
                 self.pickledData = data.read()
                 data.close()
@@ -665,7 +693,7 @@ class Game():
         self.settings = Settings()
         self.saveLocation:str = self.settings.saveLocation
         self.scoreKeep = Scoring()
-        self.savedGames = GameSave()
+        self.savedGames = GameSave(self.saveLocation)
         self.gameboard = Board()
         self.mainMenu()
     def mainMenu(self) -> None:
@@ -691,6 +719,7 @@ class Game():
                     pass
             Helpers.clearScreen()
             self.choiceMap[self.choice]()
+            Helpers.clearScreen()
         
     def play(self) -> None:
         """The main game loop
@@ -722,7 +751,7 @@ class Game():
                         print('Invalid coordinates')
                         self.error = True
                         break
-                    for (i in range(len(self.coordinates)+1)):
+                    for i in range(len(self.coordinates)+1):
                         try:
                             self.coordinates[i] = int(self.coordinates[i])
                         except ValueError:
@@ -739,6 +768,7 @@ class Game():
                         break
                 print(self.coordinates)
             except KeyboardInterrupt:
+                Helpers.clearScreen()
                 print('[1] Save and exit\n[2] Exit without saving\n[3] Return to game')
                 while True:
                     try:
@@ -747,11 +777,14 @@ class Game():
                     except ValueError:
                         pass
                 if (self.choice == 1):
-                    self.savedGames.saveGame(self.gameboard.map, self.settings.saveLocation)
+                    self.savedGames.saveGame(self.gameboard.map, self.settings.saveLocation, self.scoreKeep.score)
                     print('Game saved')
                     Helpers.anyKey()
                     return
                 elif (self.choice == 2):
+                    if (input('Are you sure? [y/N]: ').replace(' ', '').lower() == 'y'):
+                        return
+                else:
                     pass
 
         return
@@ -811,7 +844,7 @@ class Game():
 
         self.gameMap = self.savedGames.loadGame(self.saveLocation)
         if (self.gameMap == None):
-            print('Failed to load game files')
+            pass
         else:
             self.gameboard.map = self.gameMap
             print('Loaded game files')
