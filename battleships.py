@@ -642,7 +642,7 @@ class GameSave():
         self.pickledData = pickle.dumps(board)
         self.digest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
         self.savesFile[self.name] = {'fileName': Helpers.formatFileName(self.name), 'score':score, 'hash':self.digest}
-        with open(os.path.join(saveLocation, 'saved_games', f'{self.name}.pkl'), 'wb') as data:
+        with open(os.path.join(saveLocation, 'saved_games', f'{Helpers.formatFileName(self.name)}.pkl'), 'wb') as data:
             data.write(self.pickledData)
             data.close()
         with open(os.path.join(saveLocation, 'saved_games/saves.json'), 'w') as data:
@@ -679,7 +679,7 @@ class GameSave():
                 break
         if (self.fileName in self.savesFile):
             self.recvdDigest = self.savesFile[self.fileName]['hash']
-            with open(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.pkl'), 'rb') as data:
+            with open(os.path.join(saveLocation, 'saved_games', f'{Helpers.formatFileName(self.fileName)}.pkl'), 'rb') as data:
                 self.pickledData = data.read()
                 data.close()
             self.newDigest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
