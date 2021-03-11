@@ -61,10 +61,13 @@ class Helpers():
         None
         """
 
-        print(message)
-        if(platform.system() == 'Windows'):
+        if ('idlelib.run' in sys.modules):
+            input('Press enter to continue...')
+        elif(platform.system() == 'Windows'):
+            print(message)
             msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
+            print(message)
             fd = sys.stdin.fileno()
             oldterm = termios.tcgetattr(fd)
             newattr = termios.tcgetattr(fd)
@@ -91,8 +94,10 @@ class Helpers():
         None
         """
 
-        #BUG: This doesn't work in idle
-        if(platform.system() == 'Windows'):
+        if ('idlelib.run' in sys.modules):
+            for i in range(3): #Avoid idle squeezing the text
+                print('\n'*49)
+        elif(platform.system() == 'Windows'):
             os.system('cls')
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
             os.system('clear')
@@ -342,11 +347,13 @@ class Settings():
         else:
             self.saveLocation = './'
 
+        #Directories and files to create
         self.dirs = [
             'saved_games'
         ]
         self.files = [
             'score.json',
+            'settings.json',
             'saved_games/saves.json'
         ]
         if(os.path.exists(self.saveLocation) == False):
@@ -354,13 +361,14 @@ class Settings():
                 os.mkdir(self.saveLocation)
             except OSError:
                 sys.exit(f"Creation of directory {self.saveLocation} failed.\n Please create this directory manually and try again.")
-        #Check if directorys exists and if not create it
+        #Iterate through dirs and create missing
         for i in self.dirs:
             if (os.path.exists(os.path.join(self.saveLocation, i)) == False):
                 try:
                     os.mkdir(os.path.join(self.saveLocation, i))
                 except OSError:
                     sys.exit(f"Creation of directory {os.path.join(self.saveLocation, i)} failed.\n Please create this directory manually and try again.")
+        #Iterate through files and create missing
         for i in self.files:
             if (os.path.exists(os.path.join(self.saveLocation, i)) == False):
                 try:
@@ -368,7 +376,7 @@ class Settings():
                     f.write('{}')
                     f.close()
                 except OSError:
-                    sys.exit(f"Creation of directory {os.path.join(self.saveLocation, i)} failed.\n Please create this file manually and try again.")
+                    sys.exit(f"Creation of file {os.path.join(self.saveLocation, i)} failed.\n Please create this file manually and try again.")
         #Load settings.json
         with open(os.path.join(self.saveLocation, 'settings.json'), 'r') as data:
             self.settingsData = json.load(data)
@@ -564,12 +572,22 @@ class GameSave():
     -------
     listSave()
         return a list of all saved games
-    outSave()
-        print a list of all saved games
+    saveGame()
+        Saves the current game to disk
+    loadGame()
+        Loads a game from disk
+    deleteGame()
+        Deletes a game from disk
     """
 
     def __init__(self, saveLocation:str) -> None: #TODO: Add gamesave features
-        """      
+        """
+
+        Parameters
+        ----------
+        saveLocation : string
+            The path to the current save location
+            
         Returns
         -------
         None
@@ -610,6 +628,8 @@ class GameSave():
             The game map in list form
         saveLocation : string
             The path to the battleships directory
+        score : int
+            The current game score
 
         Returns
         -------
@@ -627,7 +647,7 @@ class GameSave():
             json.dump(self.savesFile, data)
         return
 
-    def loadGame(self, saveLocation) -> list:
+    def loadGame(self, saveLocation:str) -> tuple:
         """Loads a game file
 
         Loads the relevant game files before verifying the pickled
@@ -640,7 +660,10 @@ class GameSave():
 
         Returns
         -------
-        None
+        list
+            The game map loaded from file
+        int
+            The score loaded from json file
         """
 
         while True:
@@ -660,12 +683,49 @@ class GameSave():
             self.newDigest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
             if (self.recvdDigest != self.newDigest):
                 print('Integrity check failed. Game files have been modified.')
-                return
+                return None, 0
             else:
-                return pickle.loads(self.pickledData)
+                return pickle.loads(self.pickledData), self.savesFile[self.fileName]['score']
         else:
             print('Failed to load game files')
-            return
+            return None, 0
+    def deleteGame(self, saveLocation:str) -> bool:
+        """Deletes a game file from disk
+
+        Parameters
+        ----------
+        saveLocation : string
+            The path to the current save location
+
+        Returns
+        -------
+        bool
+            Success or fail of deletion
+        """
+        while True:
+            self.fileName = input('Please enter the name of the game you wish to delete or input \'view\' to view all saved games: ')
+            if (self.fileName == 'view'):
+                self.saves:list = self.listSave(saveLocation)
+                print('Saved Games:')
+                for i in range(len(self.saves)):
+                    print(f'[{i+1}] {self.saves[i]}')
+            else:
+                break
+        if(input(f'Are you sure you want to delete {self.fileName}? [y/N]: ').replace(' ', '').lower() == 'y'):
+            self.temp = self.savesFile.pop(self.fileName, None)
+            with open(os.path.join(saveLocation, 'saved_games/saves.json'), 'w') as data:
+                json.dump(self.savesFile, data)
+            if (self.temp is not None):
+                if(os.path.exists(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.pkl'))):
+                    try:
+                        os.remove(os.path.join(saveLocation, 'saved_games', f'{self.fileName}.pkl'))
+                        return True
+                    except OSError:
+                        return False
+                else:
+                    return False
+            else:
+                return False
 
 class Game():
     """This class handles the gameplay and controls all aspects of the game
@@ -702,19 +762,20 @@ class Game():
             1: self.play,
             2: self.createNew,
             3: self.loadGame,
-            4: self.showSave,
-            5: self.scoreKeep.showScores,
-            6: self.settingsOptions,
-            7: self.showHelp,
-            8: self.quit
+            4: self.deleteSave,
+            5: self.showSave,
+            6: self.scoreKeep.showScores,
+            7: self.settingsOptions,
+            8: self.showHelp,
+            9: self.quit
         }
         while True:
             print('Welcome to Battle Ships\nPlease choose an option:')
             self.choice:int = 0
-            print('[1] Play\n[2] Start A New Game\n[3] Load a saved game\n[4] View saved games\n[5] View Scores\n[6] Settings\n[7] Help and troubleshooting\n[8] Quit')
-            while self.choice not in range(1,9):
+            print('[1] Play\n[2] Start A New Game\n[3] Load a saved game\n[4] Delete a saved game\n[5] View saved games\n[6] View Scores\n[7] Settings\n[8] Help and troubleshooting\n[9] Quit')
+            while self.choice not in range(1,10):
                 try:
-                    self.choice = int(input('Please choose an option [1-8]: '))
+                    self.choice = int(input('Please choose an option [1-9]: '))
                 except ValueError:
                     pass
             Helpers.clearScreen()
@@ -741,6 +802,7 @@ class Game():
         #Game loop
         while True:
             try:
+                print(f'Current score: {self.scoreKeep.score}')
                 self.gameboard.printBoardHidden()
                 print('')
                 #Get coordinates to engage
@@ -748,21 +810,17 @@ class Game():
                 while True:
                     self.coordinates:list = input('Please enter the X and Y coordinates you wish to engage seperated by a comma: ').replace(' ', '').split(',')
                     if (not (len(self.coordinates) == 2)):
-                        print('Invalid coordinates')
                         self.error = True
-                        break
-                    for i in range(len(self.coordinates)+1):
+                    for i in range(len(self.coordinates)):
                         try:
                             self.coordinates[i] = int(self.coordinates[i])
                         except ValueError:
-                            print('Invalid coordinates')
                             self.error = True
-                            break
                         if (not (self.coordinates[i] in range(self.xy[i]+1))):
-                            print('Invalid coordinates')
                             self.error = True
-                            break
                     if (self.error):
+                        self.error = False
+                        print('Invalid coordinates')
                         continue
                     else:
                         break
@@ -786,7 +844,8 @@ class Game():
                         return
                 else:
                     pass
-
+            time.sleep(1)
+            Helpers.clearScreen()
         return
         
     def createNew(self) -> None:
@@ -827,6 +886,7 @@ class Game():
             except ValueError:
                 print('Please enter a valid number!')
         self.gameboard.generateBoard(self.width, self.height)
+        self.scoreKeep.score = self.width + self.height
         print('Game created')
         Helpers.anyKey()
         Helpers.clearScreen()
@@ -842,7 +902,7 @@ class Game():
         None
         """
 
-        self.gameMap = self.savedGames.loadGame(self.saveLocation)
+        self.gameMap, self.scoreKeep.score = self.savedGames.loadGame(self.saveLocation)
         if (self.gameMap == None):
             pass
         else:
@@ -869,6 +929,13 @@ class Game():
         Helpers.anyKey()
         Helpers.clearScreen()
         return
+    def deleteSave(self) -> None:
+        if(self.savedGames.deleteGame(self.saveLocation)):
+            print('Game deleted')
+        else:
+            print('Failed to delete game')
+        Helpers.anyKey()
+        Helpers.clearScreen()
 
     def settingsOptions(self) -> None: #TODO: Add ability to adjust settings
         """Show the settings dialog
@@ -891,12 +958,21 @@ class Game():
         -------
         None
         """
+        self.error = False
         if(os.path.exists(os.path.join(self.saveLocation, 'help.txt')) == False):
             with Spinner('Downloading help files'):
-                time.sleep(0.1)
-                urllib.request.urlretrieve('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/help.txt', os.path.join(self.saveLocation, 'help.txt'))
-                time.sleep(0.1)
-                print('\nDone')
+                try:
+                    time.sleep(0.1)
+                    urllib.request.urlretrieve('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/help.txt', os.path.join(self.saveLocation, 'help.txt'))
+                    time.sleep(0.1)
+                    print('\nDone')
+                except urllib.error.URLError:
+                     self.error = True
+        if (self.error):
+            print('\nFailed to download help files. Please make sure you are connected to the internet.')
+            Helpers.anyKey()
+            Helpers.clearScreen()
+            return
         print('Help and troubleshooting')
         print('To continue to the next page press any key.')
         Helpers.anyKey()
@@ -934,12 +1010,5 @@ class Game():
                 return
 
 if __name__ == '__main__':
-    if('idlelib.run' in sys.modules):
-        print('Warning. This code should not be run in IDLE. Some features will not work\nas intended. Please run this code in the terminal or \ncommand line.')
-        choice = input('Are you sure you want to continue? [y/N]: ').lower().replace(' ', '')
-        if (choice == 'y'):
-            pass
-        else:
-            sys.exit()
     Helpers.clearScreen()
     app = Game()
