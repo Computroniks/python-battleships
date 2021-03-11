@@ -23,7 +23,7 @@ import hmac, hashlib #To sign pickle files to prevent remote code execution
 import sys #To exit the program
 import shutil #To get terminal size
 import threading, itertools, time #For the spinner
-import urllib.request #To download the help files
+import urllib.request, distutils.version #To download the help files
 import json #For reading score and settings files
 import string #To verify filenames
 #Import platform specific module for 'press any key' prompt
@@ -64,10 +64,10 @@ class Helpers():
         if ('idlelib.run' in sys.modules):
             input('Press enter to continue...')
         elif(platform.system() == 'Windows'):
-            print(message)
+            print(message, end='\r')
             msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
-            print(message)
+            print(message, end='\r')
             fd = sys.stdin.fileno()
             oldterm = termios.tcgetattr(fd)
             newattr = termios.tcgetattr(fd)
@@ -321,6 +321,8 @@ class Settings():
     ----------
     self.saveLocation : str
         This is the file path for the save location
+    self.settingsData : dict
+        This is the contents of settings.json
 
     Methods
     -------
@@ -382,29 +384,29 @@ class Settings():
             self.settingsData = json.load(data)
         return
 
-        def changeSetting(self, setting:str, value) -> None:
-            """Changes the setting and writes change to disk
+    def changeSetting(self, setting:str, value) -> None:
+        """Changes the setting and writes change to disk
 
-            Takes the settings to change and value to change it to
-            and changes it in the dictionary before writing the 
-            changes to disk.
+        Takes the settings to change and value to change it to
+        and changes it in the dictionary before writing the 
+        changes to disk.
 
-            Parameters
-            ----------
-            setting : str
-                The setting that is to be changed
-            value
-                The value that the setting should be changed to
+        Parameters
+        ----------
+        setting : str
+            The setting that is to be changed
+        value
+            The value that the setting should be changed to
 
-            Returns
-            -------
-            None
-            """
+        Returns
+        -------
+        None
+        """
 
-            self.settingsData[setting] = value
-            with open(os.path.join(self.saveLocation, 'settings.json'), 'w') as data:
-                json.dump(self.settingsData, data)
-            return
+        self.settingsData[setting] = value
+        with open(os.path.join(self.saveLocation, 'settings.json'), 'w') as data:
+            json.dump(self.settingsData, data)
+        return
 
 
 class Board():
@@ -959,7 +961,17 @@ class Game():
         None
         """
         self.error = False
-        if(os.path.exists(os.path.join(self.saveLocation, 'help.txt')) == False):
+        try:
+            self.response = urllib.request.urlopen('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/HELPVER')
+            self.newHelpVer = self.response.read().decode('utf-8')
+        except urllib.error.URLError:
+            self.newHelpVer = '1.0.0'
+        if ('helpVer' in self.settings.settingsData):
+            self.currentHelpVer = self.settings.settingsData['helpVer']
+        else:
+            self.currentHelpVer = '1.0.0'
+        if(os.path.exists(os.path.join(self.saveLocation, 'help.txt')) == False) or (distutils.version.LooseVersion(self.newHelpVer) > distutils.version.LooseVersion(self.currentHelpVer)):
+            self.settings.changeSetting('helpVer', self.newHelpVer)
             with Spinner('Downloading help files'):
                 try:
                     time.sleep(0.1)
@@ -983,10 +995,14 @@ class Game():
         self.columns, self.rows = shutil.get_terminal_size()
         self.oldRows = self.rows
         for i in range(len(self.helpContent)):
-            print(self.helpContent[i])
-            if(i == self.rows-2):
+            print(self.helpContent[i], end=(''))
+            if(i == self.rows):
                 self.rows += self.oldRows
                 Helpers.anyKey('--MORE--')
+                print(' '*15, end='\r')#Make sure that --MORE-- is removed even if line is blank space
+        print()
+        Helpers.anyKey('--END--')
+        Helpers.clearScreen()
         
         return
 
