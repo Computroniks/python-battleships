@@ -1,5 +1,5 @@
 Battleships V1.0.0 
-Help V1.0.0
+Help V1.0.1
 Copyright © 2021 Matthew Nickson, all rights reserved
 Licensed under the terms of the MIT license.
 
@@ -44,7 +44,18 @@ Playing the game
 To start playing enter option 1 at the menu. You will then see a game board like
 below:
 
-"insert gameboard here"
+|   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |10 |
+| 1 | # | # | # | # | # | # | # | # | # | # |
+| 2 | # | # | # | # | # | # | # | # | # | # |
+| 3 | # | # | # | # | # | # | # | # | # | # |
+| 4 | # | # | # | # | # | # | # | # | # | # |
+| 5 | # | # | # | # | # | # | # | # | # | # |
+| 6 | # | # | # | # | # | # | # | # | # | # |
+| 7 | # | # | # | # | # | # | # | # | # | # |
+| 8 | # | # | # | # | # | # | # | # | # | # |
+| 9 | # | # | # | # | # | # | # | # | # | # |
+|10 | # | # | # | # | # | # | # | # | # | # |
+
 
 You will then be prompted to enter the coordinates of the grid square at which
 you wish to fire. You will then be informed if your shot hit or missed. After a
