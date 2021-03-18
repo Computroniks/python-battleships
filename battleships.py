@@ -26,6 +26,7 @@ import threading, itertools, time #For the spinner
 import urllib.request, distutils.version #To download the help files
 import json #For reading score and settings files
 import string #To verify filenames
+import random #To generate board
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -125,7 +126,9 @@ class Helpers():
         safeFileName = ''.join(c for c in unsafeFileName if c in validChars)
         safeFileName = safeFileName.replace(' ','_') # I don't like spaces in filenames.
         return safeFileName
-class Spinner:
+#End class Helpers()
+
+class Spinner():
     """This class handles the spinning icon
 
     The little nice looking spinning icon at the end of the download message
@@ -232,6 +235,7 @@ class Spinner:
         else:
             sys.stdout.write('\r')
         return
+#End class Spinner()
 
 # Define custom exceptions
 class Error(Exception):
@@ -258,8 +262,9 @@ class Error(Exception):
         self.message = message
         super().__init__(self.message)
         return None
+#End class Error()
 
-class PositionAlreadyPopulated(Error):
+class PositionAlreadyPopulatedError(Error):
     """Raised when position is already populated
 
     This error is raised when a ship is trying to be placed in
@@ -284,8 +289,9 @@ class PositionAlreadyPopulated(Error):
         self.message: str = message
         super().__init__(self.message)
         return
+#End class PositionAlreadyPopulatedError()
 
-class OutOfBounds(Error):
+class OutOfBoundsError(Error):
     """Raised when position out of bounds
 
     This error is raised when a ship is trying to be placed in
@@ -310,6 +316,7 @@ class OutOfBounds(Error):
         self.message: str = message
         super().__init__(self.message)
         return
+#End class OutOfBoundsError()
 
 class Settings():
     """This class handles all settings files
@@ -407,6 +414,7 @@ class Settings():
         with open(os.path.join(self.saveLocation, 'settings.json'), 'w') as data:
             json.dump(self.settingsData, data)
         return
+#End class Settings()
 
 
 class Board():
@@ -421,12 +429,16 @@ class Board():
     -------
     generateBoard(x, y)
         Generates a board of size `x` `y`
-    addShip(size, posX, posY)
+    addShip(size, posX, posY, rotDir, maxX, maxY, symbol)
         Adds a ship of size `size` starting at `posX` `posY`
+    addRandom(x, y)
+        Adds all the required ships in random positions on the board
     printBoard()
         Prints the game board
     printBoardHidden()
         Prints the gameboard but hides all except hits and misses
+    engage(posX, posY)
+        Engages at a specific position
     """
 
     def __init__(self) -> None:
@@ -435,8 +447,35 @@ class Board():
         -------
         None
         """
-
+        self.hits: list[tuple[int, int]] = []
         self.map = None
+        self.ships = {
+            'A':{
+                'name':'Aircraft Carrier',
+                'size':5,
+                'hits':0
+            },
+            'B':{
+                'name':'Battleship',
+                'size':4,
+                'hits':0
+            },
+            'C':{
+                'name':'Cruiser',
+                'size':3,
+                'hits':0
+            }, 
+            'S':{
+                'name':'Submarine',
+                'size':3,
+                'hits':0
+            },
+            'D':{
+                'name':'Destroyer',
+                'size':2,
+                'hits':0
+            },
+        }
         return
 
     def generateBoard(self, x:int = 10, y:int = 10) -> None:
@@ -457,10 +496,11 @@ class Board():
         None
         """
 
+        self.currentShips = self.ships.copy()
         self.map: list = [[0 for i in range(x)] for j in range(y)]
         return
 
-    def addShip(self, size: int, posX: int, posY: int, rotDir: bool = False) -> None:
+    def addShip(self, size: int, posX: int, posY: int, rotDir: bool, maxX: int, maxY: int, symbol: str) -> None:
         """Adds a ship of specified size to board starting at specified coordinates
 
         Parameters
@@ -471,15 +511,20 @@ class Board():
             The x coordinate for the start of the ship
         posY : int
             The y coordinate for the start of the ship
-        rotDir : bool, optional
+        rotDir : bool
             The direction of the ship. True is vertical. False is horizontal.
-            (default False)
+        maxX : int
+            The width of the board
+        maxY : int
+            The height of the board
+        symbol : string
+            The symbol to be placed on the board
 
         Raises
         ------
-        PositionAlreadyPopulated
+        PositionAlreadyPopulatedError
             If position for ship is already taken.
-        OutOfBounds
+        OutOfBoundsError
             If the position for the ship is not within the confines of the 
             game board.
         
@@ -488,7 +533,43 @@ class Board():
         None
         """
 
+        #Check that way is clear for ship
+        if rotDir:
+            #Two seperate for loops to avoid only half placing ships
+            for i in range(posY, posY+size):
+                try:
+                    if self.map[i][posX] != 0:
+                        raise PositionAlreadyPopulatedError
+                        return
+                except IndexError:
+                    raise OutOfBoundsError
+                    return
+            for i in range(posY, posY+size):
+                self.map[i][posX] = symbol
+        else:
+            for i in range(posX, posX+size):
+                try:
+                    if self.map[posY][i] != 0:
+                        raise PositionAlreadyPopulatedError
+                        return
+                except IndexError:
+                    raise OutOfBoundsError
+                    return
+            for i in range(posX, posX+size):
+                self.map[posY][i] = symbol
         return
+
+    def addRandom(self, x:int, y:int) -> None: #BUG: Can hang if board is too small
+        for key in self.ships:
+            while True:
+                self.startPos = (random.randint(0,x), random.randint(0, y))
+                self.rotDirection = bool(random.getrandbits(1))
+                try:
+                    self.addShip(self.ships[key]['size'], self.startPos[0], self.startPos[1], self.rotDirection, x, y, key)
+                    break
+                except (PositionAlreadyPopulatedError, OutOfBoundsError):
+                    continue
+            
 
     def printBoard(self) -> None:
         """Prints the game board
@@ -501,7 +582,7 @@ class Board():
         """
 
         # Print x heading
-        print(f"\n\n|{' ':^3}|", end='')
+        print(f"|{' ':^3}|", end='')
         for i in range(len(self.map[0])):
             print(f'{i+1:^3}|', end='')
         # Print rows with y heading
@@ -521,9 +602,11 @@ class Board():
         -------
         None
         """
-
+        #temporary for debugging. remove for production
+        # self.printBoard()
+        # return
         # Print x heading
-        print(f"\n\n|{' ':^3}|", end='')
+        print(f"|{' ':^3}|", end='')
         for i in range(len(self.map[0])):
             print(f'{i+1:^3}|', end='')
         # Print rows with y heading
@@ -535,6 +618,64 @@ class Board():
                 else:
                     print(f"{'#':^3}|", end='')
         return
+    def engage(self, posX: int, posY: int) -> str:
+        """Engages a ship at specified position
+
+        Engages the position specified. This checks if the position has 
+        aleady been engaged and if not engages the position. It then 
+        returns the result of that engagement as a string.
+
+        Parameters
+        ----------
+        posX : int
+            The x coordinate to engage
+        posY : int
+            The y coordinate to engage 
+        
+        Returns
+        -------
+        string
+            The type of ship that has been hit
+        """
+
+        posX -= 1 #Account for list starting at 0 but board starting at 1
+        posY -= 1
+        if (posX, posY) in self.hits:
+            print('You have already engaged this position!')
+            return 'AE'
+        else:
+            self.hits.append((posX, posY))
+            self.hitShip = self.map[posY][posX]
+            if self.hitShip == 0:
+                self.map[posY][posX] = 'M'
+                return 'miss'
+            else:
+                self.map[posY][posX] = 'H'
+                self.currentShips[self.hitShip]['hits'] += 1
+                return self.hitShip
+
+    def isSunk(self, ship:str) -> bool:
+        """Checks if ship has been sunk 
+
+        Checks if the specified ship has been sunk and returns it 
+        as a boolean value.
+
+        Parameters
+        ----------
+        ship : string
+            The ship to check
+        
+        Returns
+        -------
+        boolean
+            If the specified ship has been sunk or not
+        """
+
+        if self.currentShips[ship]['size'] == self.currentShips[ship]['hits']:
+            return True
+        else:
+            return False
+#End class Board()
      
 class Scoring():
     """This class handles the scoring and saving of scores
@@ -566,6 +707,7 @@ class Scoring():
         """
 
         return   
+#End class Scoring()
         
 class GameSave():
     """This class handles the saving and loading of game files
@@ -691,6 +833,7 @@ class GameSave():
         else:
             print('Failed to load game files')
             return None, 0
+
     def deleteGame(self, saveLocation:str) -> bool:
         """Deletes a game file from disk
 
@@ -704,6 +847,7 @@ class GameSave():
         bool
             Success or fail of deletion
         """
+
         while True:
             self.fileName = input('Please enter the name of the game you wish to delete or input \'view\' to view all saved games: ')
             if (self.fileName == 'view'):
@@ -728,6 +872,7 @@ class GameSave():
                     return False
             else:
                 return False
+#End class GameSave()
 
 class Game():
     """This class handles the gameplay and controls all aspects of the game
@@ -826,7 +971,18 @@ class Game():
                         continue
                     else:
                         break
-                print(self.coordinates)
+                self.engageResult = self.gameboard.engage(self.coordinates[0], self.coordinates[1])
+                if self.engageResult is not None:
+                    if self.engageResult == 'miss':
+                        print('Miss')
+                        self.scoreKeep.score -= 1
+                    elif self.engageResult == 'AE':
+                        pass
+                    else:
+                        if self.gameboard.isSunk(self.engageResult):
+                            print(f'You sunk a {self.gameboard.ships[self.engageResult]["name"]}')
+                        else:
+                            print(f'You hit a {self.gameboard.ships[self.engageResult]["name"]}')
             except KeyboardInterrupt:
                 Helpers.clearScreen()
                 print('[1] Save and exit\n[2] Exit without saving\n[3] Return to game')
@@ -846,7 +1002,7 @@ class Game():
                         return
                 else:
                     pass
-            time.sleep(1)
+            time.sleep(2)
             Helpers.clearScreen()
         return
         
@@ -887,9 +1043,11 @@ class Game():
                     break
             except ValueError:
                 print('Please enter a valid number!')
-        self.gameboard.generateBoard(self.width, self.height)
-        self.scoreKeep.score = self.width + self.height
-        print('Game created')
+        with Spinner('Placing Ships'):
+            self.gameboard.generateBoard(self.width, self.height)
+            self.gameboard.addRandom(self.width, self.height)
+            self.scoreKeep.score = self.width + self.height
+        print('\nGame created')
         Helpers.anyKey()
         Helpers.clearScreen()
         return
@@ -1003,7 +1161,6 @@ class Game():
         print()
         Helpers.anyKey('--END--')
         Helpers.clearScreen()
-        
         return
 
     def quit(self) -> None: 
@@ -1024,6 +1181,7 @@ class Game():
             else:
                 Helpers.clearScreen()
                 return
+#End class Game()
 
 if __name__ == '__main__':
     Helpers.clearScreen()
