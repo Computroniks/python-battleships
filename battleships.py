@@ -363,6 +363,7 @@ class Settings():
         self.files = [
             'score.json',
             'settings.json',
+            'scores.json',
             'saved_games/saves.json'
         ]
         if(os.path.exists(self.saveLocation) == False):
@@ -439,6 +440,8 @@ class Board():
         Prints the gameboard but hides all except hits and misses
     engage(posX, posY)
         Engages at a specific position
+    won()
+        Checks if all ships have been destroyed
     """
 
     def __init__(self) -> None:
@@ -496,7 +499,10 @@ class Board():
         None
         """
 
-        self.currentShips = self.ships.copy()
+        self.currentShips = dict(self.ships) #Don't use dict.copy() as it is shallow so doesn't account for nested items
+        self.sunkShips:list[str] = []
+        self.hits:list = []
+        self.hitShip:list = []
         self.map: list = [[0 for i in range(x)] for j in range(y)]
         return
 
@@ -672,6 +678,23 @@ class Board():
         """
 
         if self.currentShips[ship]['size'] == self.currentShips[ship]['hits']:
+            self.sunkShips.append(ship)
+            return True
+        else:
+            return False
+    def won(self) -> bool:
+        """Checks if all ships have been sunk 
+
+        Checks if all the ships on the board have been sunk and 
+        returns the status it as a boolean value.
+        
+        Returns
+        -------
+        boolean
+            If all of the ships on the board have been sunk
+        """
+
+        if len(self.sunkShips) >= 5:
             return True
         else:
             return False
@@ -691,9 +714,17 @@ class Scoring():
         print a list of top 10 scores
     """
 
-    def __init__(self) -> None:
+    def __init__(self, saveLocation:str) -> None:
         self.score = 0
+        with open(os.path.join(saveLocation, 'scores.json'), 'r') as data:
+            self.scoresSave = json.load(data)
         return
+
+    def getScores(self, ordered:bool = False) -> dict:
+        if ordered:
+            return {k: v for k, v in sorted(self.scoresSave.items(), key=lambda item: item[1])}
+        else:
+            return self.scoresSave
 
     def showScores(self) -> None:
         """Prints a list of the top 10 scores
@@ -705,8 +736,60 @@ class Scoring():
         -------
         None
         """
+        self.tempScore = dict(itertools.islice(self.getScores(True).items(), 10))
+        i = 0
+        print('Scores:')
+        for key in self.tempScore:
+            i +=1
+            print(f'[{i}] {key}: {self.scoresSave[key]}')
+        Helpers.anyKey()
 
         return   
+
+    def addScore(self, name:str, saveLocation:str, force:bool = False) -> dict:
+        """Adds a score to scores file
+        
+        Adds a score to the scores file with the users name as 
+        the key. If force is not set then it checks to see if 
+        it is going to overwrite an existing score. It returns 
+        a dict that contains the return status and if error an
+        error code .
+
+        Parameters
+        -----------
+        name : string
+            The name to write the score under
+        saveLocation : string
+            The path to the current save location
+        force : bool, optional
+            Bypass overwriting check (default false)
+
+        Returns
+        -------
+        dict : {'status':bool, 'errCd':str}
+            A simple success or fail indicator. If fail returns 
+            status false and the appropriate error code. If 
+            success returns status true and appropriate error
+            code. 
+            Error Codes
+            -----------
+            ok
+                Success
+            ovrwrt
+                This action will overwrite a pre-existing entry
+        """
+
+        if force:
+            pass
+        else:
+            if name in self.scoresSave:
+                return {'status':False, 'errCd':'ovrwrt'}
+        self.scoresSave[name] = self.score
+        with open(os.path.join(saveLocation, 'scores.json'), 'w') as data:
+            json.dump(self.scoresSave, data)
+        return {'status':True, 'errCd':'ok'}
+        
+
 #End class Scoring()
         
 class GameSave():
@@ -899,7 +982,7 @@ class Game():
     def __init__(self) -> None:
         self.settings = Settings()
         self.saveLocation:str = self.settings.saveLocation
-        self.scoreKeep = Scoring()
+        self.scoreKeep = Scoring(self.saveLocation)
         self.savedGames = GameSave(self.saveLocation)
         self.gameboard = Board()
         self.mainMenu()
@@ -948,6 +1031,24 @@ class Game():
         print('To exit press CTRL + C at any time')
         #Game loop
         while True:
+            if self.gameboard.won():
+                print('All of the enemies ships have been destroyed. You win!')
+                print(f'Your score is {self.scoreKeep.score}')
+                if input('Would you like to save your score? [y/N]: ').lower().replace(' ', '') == 'y':
+                    self.name = input('Please enter your name: ')
+                    self.saveResponse = self.scoreKeep.addScore(self.name, self.saveLocation)
+                    if self.saveResponse['status']:
+                        print('Score saved successfully')
+                    elif self.saveResponse['status'] == False and self.saveResponse['errCd'] == 'ovrwrt':
+                        if input('You are about to overwrite an existing entry! Are you sure you want to proceed? [y/N]: ').lower().replace(' ', '') == 'y':
+                            self.scoreKeep.addScore(self.name, self.saveLocation, True)
+                        else:
+                            pass
+                else:
+                    pass
+                Helpers.anyKey()
+                Helpers.clearScreen()
+                break
             try:
                 print(f'Current score: {self.scoreKeep.score}')
                 self.gameboard.printBoardHidden()
@@ -983,6 +1084,7 @@ class Game():
                             print(f'You sunk a {self.gameboard.ships[self.engageResult]["name"]}')
                         else:
                             print(f'You hit a {self.gameboard.ships[self.engageResult]["name"]}')
+
             except KeyboardInterrupt:
                 Helpers.clearScreen()
                 print('[1] Save and exit\n[2] Exit without saving\n[3] Return to game')
