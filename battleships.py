@@ -418,7 +418,6 @@ class Settings():
         return
 #End class Settings()
 
-
 class Board():
     """A class that handles anything to do with the game board
 
@@ -788,9 +787,7 @@ class Scoring():
         self.scoresSave[name] = self.score
         with open(os.path.join(saveLocation, 'scores.json'), 'w') as data:
             json.dump(self.scoresSave, data)
-        return {'status':True, 'errCd':'ok'}
-        
-
+        return {'status':True, 'errCd':'ok'}        
 #End class Scoring()
         
 class GameSave():
