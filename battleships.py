@@ -27,6 +27,7 @@ import urllib.request, distutils.version #To download the help files
 import json #For reading score and settings files
 import string #To verify filenames
 import random #To generate board
+from multiprocessing import Process #To timeout placing ships
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -1025,7 +1026,10 @@ class Game():
 
         #If no game loaded create new one
         if(self.gameboard.map == None):
-            self.createNew()
+            if self.createNew():
+                pass
+            else:
+                return
         #Get gameboard height and width
         self.xy = [len(self.gameboard.map[0]), len(self.gameboard.map)]
         print('To exit press CTRL + C at any time')
@@ -1146,13 +1150,28 @@ class Game():
             except ValueError:
                 print('Please enter a valid number!')
         with Spinner('Placing Ships'):
+            self.error = False
             self.gameboard.generateBoard(self.width, self.height)
-            self.gameboard.addRandom(self.width, self.height)
+            #Timeout for placing ships
+            self.placeShipsTmOt = Process(target=self.gameboard.addRandom, args=[self.width, self.height])
+            self.placeShipsTmOt.start()
+            self.placeShipsTmOt.join(timeout=10)
+            self.placeShipsTmOt.terminate()
+            if self.placeShipsTmOt.exitcode is None:
+                self.gameboard.map = None
+                self.error = True
             self.scoreKeep.score = self.width + self.height
-        print('\nGame created')
-        Helpers.anyKey()
-        Helpers.clearScreen()
-        return
+        if self.error:
+            print('Failed to place ships.\nTry making the board larger.')
+            self.error = False
+            Helpers.anyKey()
+            Helpers.clearScreen()
+            return False
+        else:
+            print('\nGame created')
+            Helpers.anyKey()
+            Helpers.clearScreen()
+            return True
 
     def loadGame(self) -> None:
         """Load a game file from disk
