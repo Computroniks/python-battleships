@@ -18,13 +18,14 @@ as follows:
 [1] Play
 [2] Start A New Game
 [3] Load a saved game
-[4] View saved games
-[5] View Scores
-[6] Settings
-[7] Help and troubleshooting
-[8] Quit
+[4] Delete a saved game
+[5] View saved games
+[6] View Scores
+[7] Settings
+[8] Help and troubleshooting
+[9] Quit
 You can select these options by entering the corresponding number at the 
-`Please choose an option [1-8]:` prompt.
+`Please choose an option [1-9]:` prompt.
 
 Help
 ----
@@ -41,8 +42,9 @@ to the main menu.
 Playing the game
 ----------------
 
-To start playing enter option 1 at the menu. You will then see a game board like
-below:
+To start playing enter option 1 at the menu. If you do not have a game currently 
+running you will be prompted to create a new game. You will then see a game 
+board like below:
 
 |   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |10 |
 | 1 | # | # | # | # | # | # | # | # | # | # |
@@ -63,6 +65,7 @@ short delay the screen will be cleared and an updated game board will be printed
 to the screen. The proccess then continues until all ships are sunk. You can
 exit the game at any time  by pressing Ctrl + C. You will then be prompted with 
 an options menu as shown below:
+
 [1] Save and exit
 [2] Exit without saving
 [3] Return to game
@@ -73,4 +76,41 @@ If you choose option two you will be asked if you are sure you want to quit and
 then if you decide to proceed you will be returned to the main menu.
 If you choose option three you will be returned to the game.
 
+Loading a game
+--------------
+
+To load a saved game enter 3 at the prompt. You will then be shown the following 
+prompt:
+
+Please enter the name of the game you wish to load or input 'view' to view all 
+saved games:
+
+At this point you can then either enter the name of the game you wish to load or
+view a list of all saved games. To view a list of all saved games enter 'view' 
+at the prompt. If you enter view at the prompt you will be shown a list of all
+saved games like below:
+
+Saved Games:
+[1] Game 1
+[2] Game 2
+[3] Daves game
+
+You will then be reprompted to enter the name of the game you wish to load.
+After entering the name of the game the appropriate files will be loaded. On 
+completion you will be shown the following message:
+
+Loaded game files
+
+This means that all of the game files have been successfully loaded. There are 
+also a few other messages that could be displayed in case of failure. There are 
+a number of reasons that the game could fail to load the game files.
+
+1. The name game you specified does not exist. If this is the case then you will 
+   the following message:
+   Failed to load game files 
+2. The game file has been modified. This means that someone or another program
+   has modified the game save files. If this is the case then you will not be
+   able to use this game save as it could contain malicious code. You will be 
+   made aware of this with the following message:
+   Integrity check failed. Game files have been modified.
 --------------------------------------------------------------------------------
