@@ -425,6 +425,13 @@ class Board():
     ----------
     map : list
         a 2d list that is the game board
+    currentShips : dict
+        A dictionary of all ships currently on the board and how many
+        hits they have recived
+    hits : list
+        A list of coordinates that have been engaged
+    sunkShips : list
+        A list of ships that have been sunk
 
     Methods
     -------
@@ -452,6 +459,7 @@ class Board():
         """
         self.hits: list[tuple[int, int]] = []
         self.map = None
+        self.sunkShips:list[str] = []
         self.ships = {
             'A':{
                 'name':'Aircraft Carrier',
@@ -502,7 +510,7 @@ class Board():
         self.currentShips = dict(self.ships) #Don't use dict.copy() as it is shallow so doesn't account for nested items
         self.sunkShips:list[str] = []
         self.hits:list = []
-        self.hitShip:list = []
+        # self.hitShip:list = []
         self.map: list = [[0 for i in range(x)] for j in range(y)]
         return
 
@@ -576,7 +584,6 @@ class Board():
                 except (PositionAlreadyPopulatedError, OutOfBoundsError):
                     continue
             
-
     def printBoard(self) -> None:
         """Prints the game board
         
@@ -817,6 +824,8 @@ class GameSave():
         -------
         None
         """
+
+        self.defaultReturn:tuple = (None, 0, None, None, None)
         with open(os.path.join(saveLocation, 'saved_games/saves.json'), 'r') as data:
             self.savesFile = json.load(data)
         self.saveKey:bytes = bytes('6P5OajyXaEURcLI0URJb', 'ascii') #Key for testing HMAC. Should be stored more securely
@@ -841,7 +850,7 @@ class GameSave():
             self.savedGames.append(key)
         return self.savedGames
 
-    def saveGame(self, board:list, saveLocation:str, score:int) -> None:
+    def saveGame(self, board:list, saveLocation:str, score:int, currentShips:dict, hits:list, sunkShips:list) -> None:
         """Saves the current gameboard
         
         Pickles provided gameboard and then signs data using HMAC before 
@@ -855,6 +864,12 @@ class GameSave():
             The path to the battleships directory
         score : int
             The current game score
+        currentShips : dict
+            A dictionary containing all the ships currently on the game board
+        hits : list
+            A list of all positions that have been engaged
+        sunkShips : list
+            A list of all ships that have been sunk
 
         Returns
         -------
@@ -864,7 +879,15 @@ class GameSave():
         self.name = input('Please enter a name for this game: ')
         self.pickledData = pickle.dumps(board)
         self.digest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
-        self.savesFile[self.name] = {'fileName': Helpers.formatFileName(self.name), 'score':score, 'hash':self.digest}
+        # self.savesFile[self.name] = {'fileName': Helpers.formatFileName(self.name), 'score':score, 'hash':self.digest, 'currentShips':currentShips}
+        self.savesFile[self.name] = {
+            'fileName': Helpers.formatFileName(self.name),
+            'score':score,
+            'hash':self.digest,
+            'currentShips':currentShips,
+            'hits':hits,
+            'sunkShips':sunkShips
+        }
         with open(os.path.join(saveLocation, 'saved_games', f'{Helpers.formatFileName(self.name)}.pkl'), 'wb') as data:
             data.write(self.pickledData)
             data.close()
@@ -885,12 +908,19 @@ class GameSave():
 
         Returns
         -------
-        list
-            The game map loaded from file
-        int
-            The score loaded from json file
+        tuple
+            list
+                The game map loaded from file
+            int
+                The score loaded from json file
+            dict
+                A dictionary containing all the current ships on the board
+            list
+                A list of all positions that have been engaged
+            list
+                A list of all ships that have been sunk
         """
-
+        
         while True:
             self.fileName = input('Please enter the name of the game you wish to load or input \'view\' to view all saved games: ')
             if (self.fileName == 'view'):
@@ -908,12 +938,18 @@ class GameSave():
             self.newDigest = hmac.new(self.saveKey, self.pickledData, hashlib.sha256).hexdigest()
             if (self.recvdDigest != self.newDigest):
                 print('Integrity check failed. Game files have been modified.')
-                return None, 0
+                return self.defaultReturn
             else:
-                return pickle.loads(self.pickledData), self.savesFile[self.fileName]['score']
+                return (
+                    pickle.loads(self.pickledData),
+                    self.savesFile[self.fileName]['score'],
+                    self.savesFile[self.fileName]['currentShips'],
+                    self.savesFile[self.fileName]['hits'],
+                    self.savesFile[self.fileName]['sunkShips']
+                )
         else:
             print('Failed to load game files')
-            return None, 0
+            return self.defaultReturn
 
     def deleteGame(self, saveLocation:str) -> bool:
         """Deletes a game file from disk
@@ -1096,7 +1132,14 @@ class Game():
                     except ValueError:
                         pass
                 if (self.choice == 1):
-                    self.savedGames.saveGame(self.gameboard.map, self.settings.saveLocation, self.scoreKeep.score)
+                    self.savedGames.saveGame(
+                        self.gameboard.map,
+                        self.settings.saveLocation,
+                        self.scoreKeep.score,
+                        self.gameboard.currentShips,
+                        self.gameboard.hits,
+                        self.gameboard.sunkShips
+                    )
                     print('Game saved')
                     Helpers.anyKey()
                     return
@@ -1180,7 +1223,7 @@ class Game():
         None
         """
 
-        self.gameMap, self.scoreKeep.score = self.savedGames.loadGame(self.saveLocation)
+        self.gameMap, self.scoreKeep.score, self.gameboard.currentShips, self.gameboard.hits, self.gameboard.sunkShips = self.savedGames.loadGame(self.saveLocation)
         if (self.gameMap == None):
             pass
         else:
