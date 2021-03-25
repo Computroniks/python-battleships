@@ -27,7 +27,7 @@ import urllib.request, distutils.version #To download the help files
 import json #For reading score and settings files
 import string #To verify filenames
 import random #To generate board
-from multiprocessing import Process #To timeout placing ships
+import copy #To copy nested dictionaries
 #Import platform specific module for 'press any key' prompt
 if(platform.system() == 'Windows'):
     import msvcrt
@@ -67,7 +67,7 @@ class Helpers():
             input('Press enter to continue...')
         elif(platform.system() == 'Windows'):
             print(message, end='\r')
-            msvcrt.getch() #BUG: If run in idle this is non blocking. See: https://bugs.python.org/issue9290
+            msvcrt.getch() 
         elif(platform.system() == 'Darwin' or platform.system() == 'Linux'):
             print(message, end='\r')
             fd = sys.stdin.fileno()
@@ -507,7 +507,7 @@ class Board():
         None
         """
 
-        self.currentShips = dict(self.ships) #Don't use dict.copy() as it is shallow so doesn't account for nested items
+        self.currentShips = copy.deepcopy(self.ships) #Don't use dict.copy() as it is shallow so doesn't account for nested items
         self.sunkShips:list[str] = []
         self.hits:list = []
         # self.hitShip:list = []
@@ -573,7 +573,7 @@ class Board():
                 self.map[posY][i] = symbol
         return
 
-    def addRandom(self, x:int, y:int) -> None: #BUG: Can hang if board is too small
+    def addRandom(self, x:int, y:int) -> None: 
         for key in self.ships:
             while True:
                 self.startPos = (random.randint(0,x), random.randint(0, y))
@@ -616,8 +616,8 @@ class Board():
         None
         """
         #temporary for debugging. remove for production
-        # self.printBoard()
-        # return
+        self.printBoard()
+        return
         # Print x heading
         print(f"|{' ':^3}|", end='')
         for i in range(len(self.map[0])):
@@ -653,11 +653,11 @@ class Board():
 
         posX -= 1 #Account for list starting at 0 but board starting at 1
         posY -= 1
-        if (posX, posY) in self.hits:
+        if [posX, posY] in self.hits:
             print('You have already engaged this position!')
             return 'AE'
         else:
-            self.hits.append((posX, posY))
+            self.hits.append([posX, posY])
             self.hitShip = self.map[posY][posX]
             if self.hitShip == 0:
                 self.map[posY][posX] = 'M'
@@ -812,7 +812,7 @@ class GameSave():
         Deletes a game from disk
     """
 
-    def __init__(self, saveLocation:str) -> None: #TODO: Add gamesave features
+    def __init__(self, saveLocation:str) -> None: 
         """
 
         Parameters
@@ -1189,18 +1189,16 @@ class Game():
                     break
             except ValueError:
                 print('Please enter a valid number!')
+        if (self.width < 5 or self.height < 5) and (self.width * self.height < 20):
+            print('Board is too small!')
+            Helpers.anyKey()
+            Helpers.clearScreen()
+            return
         with Spinner('Placing Ships'):
             self.error = False
             self.gameboard.generateBoard(self.width, self.height)
-            #Timeout for placing ships
-            self.placeShipsTmOt = Process(target=self.gameboard.addRandom, args=[self.width, self.height])
-            self.placeShipsTmOt.start()
-            self.placeShipsTmOt.join(timeout=10)
-            self.placeShipsTmOt.terminate()
-            if self.placeShipsTmOt.exitcode is None:
-                self.gameboard.map = None
-                self.error = True
-            self.scoreKeep.score = self.width + self.height
+            self.gameboard.addRandom(self.width, self.height)
+            self.scoreKeep.score = (self.width + self.height) * 2
         if self.error:
             print('Failed to place ships.\nTry making the board larger.')
             self.error = False
@@ -1267,9 +1265,32 @@ class Game():
         -------
         None
         """
+        print('Change Settings')
+        print('Settings should only be changed by experienced users. CHANGING THEM MAY BREAK YOUR GAME!')
+        if input('Are you sure you want to continue? [y/N]: ').lower().replace(' ', '') != 'y':
+            pass
+        elif len(self.settings.settingsData) == 0:
+            print('There are no settings to change')
+        else:
+            while True:
+                self.choice = input('Please enter the name of the setting you wish to change or enter `view` to view all settings: ').replace(' ', '')
+                if self.choice == 'view':
+                    print('{: <20} {: <20}'.format('Setting', 'Value'))
+                    for key in self.settings.settingsData:
+                        print(f'{key: <20} {self.settings.settingsData[key]: <20}')
+                        
+                if self.choice in self.settings.settingsData:
+                    self.settingVal = input('Please enter the value you wish to change the setting to: ')
+                    self.settings.changeSetting(self.choice, self.settingVal)
+                    print('Setting changed')
+                    break
+                else:
+                    print('Setting does not exist')
+        Helpers.anyKey()
+        Helpers.clearScreen()
 
         pass
-    def showHelp(self) -> None: #TODO: Add help text
+    def showHelp(self) -> None:
         """Output the help text
         
         Downloads help file if not already downloaded and then displays it
@@ -1280,11 +1301,13 @@ class Game():
         None
         """
         self.error = False
-        try:
-            self.response = urllib.request.urlopen('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/HELPVER')
-            self.newHelpVer = self.response.read().decode('utf-8')
-        except urllib.error.URLError:
-            self.newHelpVer = '1.0.0'
+        with Spinner("Getting current help version"):
+            try:
+                self.response = urllib.request.urlopen('https://raw.githubusercontent.com/Computroniks/python-battleships/main/assets/HELPVER')
+                self.newHelpVer = self.response.read().decode('utf-8')
+            except urllib.error.URLError:
+                self.newHelpVer = '1.0.0'
+            Helpers.clearScreen()
         if ('helpVer' in self.settings.settingsData):
             self.currentHelpVer = self.settings.settingsData['helpVer']
         else:
